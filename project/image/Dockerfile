@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM nvidia/cuda:10.2-cudnn8-devel-ubuntu18.04
 
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8
 
@@ -245,3 +245,30 @@ EXPOSE 2222 6000 6001
 ENTRYPOINT ["/cocalc/bin/tini", "--"]
 CMD ["sh", "-c", "env -i /cocalc/init/init.sh $COCALC_PROJECT_ID"]
 
+# Install miniconda
+RUN curl -LO http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+RUN bash Miniconda3-latest-Linux-x86_64.sh -p /miniconda -b
+RUN rm Miniconda3-latest-Linux-x86_64.sh
+ENV PATH=${PATH}:/miniconda/bin
+RUN conda update -y conda
+
+# Install Rapids.ai stack and others
+RUN conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
+RUN conda install -c rapidsai-nightly -c nvidia -c conda-forge -c defaults rapids=0.15 python=3.8 cudatoolkit=10.2
+RUN conda install -c pyviz holoviews
+RUN conda install -c conda-forge jupyterlab
+RUN /miniconda/bin/pip3 install torchbiggraph biopython pyfaidx seaborn statsmodels intervaltree
+
+# Add Conda kernel
+RUN cp -R /usr/share/jupyter/kernels/python3 /usr/share/jupyter/kernels/conda
+RUN echo $'{ \n\
+  "argv": [ \n\
+    "/miniconda/bin/python3", \n\
+    "-m", \n\
+    "ipykernel_launcher", \n\
+    "-f", \n\
+    "{connection_file}" \n\
+  ], \n\
+  "display_name": "Conda", \n\
+  "language": "python" \n\
+  }' >  /usr/share/jupyter/kernels/conda/kernel.json
