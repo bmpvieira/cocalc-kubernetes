@@ -1,3 +1,49 @@
+# Resurgo instructions
+```bash
+# Install gcloud on OSX
+brew cask install gcloud
+gcloud init
+gcloud components install kubectl
+
+# Set PATH if needed in fish shell
+set -x PATH $PATH:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin
+
+# Go to Google Cloud and create a cluster named resurgo or use something like command below
+gcloud container clusters create resurgo \
+  --zone eu-west2-a \
+  --node-locations eu-west2-a \
+  --num-nodes 1 --enable-autoscaling --min-nodes 0 --max-nodes 6
+
+# Get resurgo cluster credentials for kubectl tool
+gcloud container clusters get-credentials resurgo
+
+# Create service account
+kubectl create serviceaccount cocalc-kubernetes-server
+kubectl create rolebinding cocalc-kubernetes-server-binding --clusterrole=admin --serviceaccount=default:cocalc-kubernetes-server
+
+# Git clone cocalc-kubernetes
+git clone git@gitlab.com:resurgo/cocalc-kubernetes.git
+cd cocalc-kubernetes/server
+
+# Deploy code to cluster
+kubectl apply -f deployment.yaml
+
+# Expose service privately and local port forward
+kubectl expose deployment cocalc-kubernetes-server
+kubectl port-forward --address 0.0.0.0 service/cocalc-kubernetes-server 4043:443
+
+# Or, expose service to the world (TODO: improve security)
+kubectl expose deployment cocalc-kubernetes-server --type=LoadBalancer --name=cocalc
+
+# Deploy NFS for shared state across instances
+kubectl apply -f nfs-service.yaml
+
+# Get some info about service (like availability, IP, ports, status, etc)
+kubectl get nodes --output wide
+watch kubectl get pods
+kubectl get services
+```
+
 # cocalc-kubernetes
 
 This is a free open source AGPL licensed slightly modified version of [cocalc-docker](https://github.com/sagemathinc/cocalc-docker), but for running CoCalc on a Kubernetes cluster.  There is one pod for the server and one pod for each project.
