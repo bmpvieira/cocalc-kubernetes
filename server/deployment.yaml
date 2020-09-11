@@ -22,8 +22,8 @@ spec:
       containers:
       - env:
         - name: KUBERNETES_REGISTRY
-          value: sagemathinc
-        image: sagemathinc/cocalc-kubernetes-server:latest
+          value: bionode
+        image: bionode/cocalc-kubernetes-server:latest
         name: cocalc-kubernetes-server
         ports:
         - containerPort: 80
